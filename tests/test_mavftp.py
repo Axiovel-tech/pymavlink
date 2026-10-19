@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 from argparse import Namespace
+from functools import partial
 from io import BytesIO, StringIO
 
 from unittest.mock import MagicMock, patch
@@ -5857,7 +5858,7 @@ class TestMAVFTPReplyCompletion(unittest.TestCase):  # pylint: disable=too-many-
                     ))
                     receive = master.recv_match
 
-                    def paced_receive(clock=clock, master=master, receive=receive, **kwargs):
+                    def paced_receive(clock, master, receive, **kwargs):
                         clock[0] += 0.01
                         request = master._decode_payload(master.mav.sent[-1][-1])
                         if request.opcode == OP_TerminateSession:
@@ -5865,7 +5866,7 @@ class TestMAVFTPReplyCompletion(unittest.TestCase):  # pylint: disable=too-many-
                                              session=request.session)
                         return receive(**kwargs)
 
-                    master.recv_match = paced_receive
+                    master.recv_match = partial(paced_receive, clock, master, receive)
                     downloaded = []
                     ftp.cmd_get(["remote"], callback=lambda fh, downloaded=downloaded: downloaded.append(
                         fh.read() if fh is not None else None))
